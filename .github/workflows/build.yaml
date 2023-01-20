@@ -1,0 +1,63 @@
+name: Build
+on:
+  - push
+  - release
+  - pull_request
+  - workflow_dispatch
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch:
+          - amd64
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup MS dev commands
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: install meson and ninja
+        run: pip install meson ninja
+
+      - name: Install pkg-config lite and nasm
+        shell: bash
+        run: |
+          # pkg-config
+          curl -o pcl.zip -L https://github.com/AmusementClub/blobs/releases/download/blob-pkgconfiglite/pkg-config-lite-0.28-1_bin-win32.zip
+          7z x pcl.zip
+          echo "$(cygpath --absolute --long-name --windows $(pwd)/pkg-config-lite-0.28-1/bin)" >> $GITHUB_PATH
+          # nasm
+          curl -o nasm.zip -L https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/win64/nasm-2.16.01-win64.zip
+          7z x nasm.zip
+          echo "$(cygpath --absolute --long-name --windows $(pwd)/nasm-2.16.01)" >> $GITHUB_PATH
+          cat $GITHUB_PATH
+
+      - name: Run vcpkg
+        uses: lukka/run-vcpkg@v7
+        with:
+          vcpkgArguments: 'fftw3[avx2]:x64-windows-static'
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+          vcpkgGitCommitId: 5568f110b509a9fd90711978a7cb76bae75bb092 # 2021.05.12 release
+
+      - name: download VS headers and patch header location
+        shell: bash
+        run: |
+          git clone https://github.com/AmusementClub/vapoursynth-classic --depth=1 --branch doodle2 vapoursynth
+          cp vapoursynth/include/*.h src/
+          sed -i -e '/#include <V/y|<>|""|' src/*.[ch] src/*.cpp
+      - name: Meson setup
+        run: meson setup builddir/ -Db_vscrt=mt -Dpkg_config_path=${{ github.workspace }}/vcpkg/installed/x64-windows-static/lib/pkgconfig
+      - name: Meson compile
+        run: meson compile -C builddir/ -v
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-${{matrix.arch}}
+          path: |
+            builddir/mvtools.dll

@@ -1,8 +1,9 @@
 project('MVTools', 'c', 'cpp',
         version: '23',
         default_options: ['c_std=c99', 'cpp_std=c++11', 'buildtype=release', 'b_lto=true'],
-        meson_version: '>=0.46')
+        meson_version: '>=0.49')
 
+gcc_syntax = meson.get_compiler('cpp').get_argument_syntax() == 'gcc'
 
 warnings = [
   '-Wall',
@@ -11,10 +12,14 @@ warnings = [
 ]
 
 cflags = [
-  warnings,
-  '-fvisibility=hidden',
   '-DPACKAGE_VERSION="@0@"'.format(meson.project_version()),
 ]
+if gcc_syntax
+  cflags += [
+    warnings,
+    '-fvisibility=hidden',
+  ]
+endif
 
 ldflags = [
 ]
@@ -30,7 +35,11 @@ nasm_flags = [
 ]
 
 
-vapoursynth_dep = dependency('vapoursynth').partial_dependency(includes: true, compile_args: true)
+if gcc_syntax
+  vapoursynth_dep = [dependency('vapoursynth').partial_dependency(includes: true, compile_args: true)]
+else
+  vapoursynth_dep = []
+endif
 
 
 sources = [
@@ -82,8 +91,10 @@ host_system = host_machine.system()
 
 if host_system == 'windows' or host_system == 'cygwin'
   if host_cpu_family == 'x86'
-    cflags += '-mstackrealign'
-    ldflags += '-Wl,--kill-at'
+    if gcc_syntax
+      cflags += '-mstackrealign'
+      ldflags += '-Wl,--kill-at'
+    endif
     nasm_flags += '-DPREFIX'
   endif
 
@@ -109,7 +120,10 @@ helper_libs = []
 
 
 if host_cpu_family.startswith('x86')
-  cflags += ['-mfpmath=sse', '-msse2', '-DMVTOOLS_X86=1']
+  cflags += [ '-DMVTOOLS_X86=1' ]
+  if gcc_syntax
+    cflags += ['-mfpmath=sse', '-msse2' ]
+  endif
 
 
   nasm_sources = [
@@ -156,7 +170,7 @@ if host_cpu_family.startswith('x86')
   helper_libs += static_library('avx2',
                                 libavx2_sources,
                                 dependencies: vapoursynth_dep,
-                                cpp_args: [cflags, '-mavx2', '-mtune=haswell'],
+                                cpp_args: cflags + (gcc_syntax ? ['-mavx2', '-mtune=haswell'] : []),
                                 install: false)
 endif
 
@@ -164,9 +178,8 @@ endif
 cxx = meson.get_compiler('cpp')
 
 
-deps = [
-  vapoursynth_dep,
-  dependency('fftw3f'),
+deps = vapoursynth_dep + [
+  build_machine.system() == 'windows' ? dependency('fftwf') : dependency('fftw3f'),
   cxx.find_library('m', required: false),
 ]
 
