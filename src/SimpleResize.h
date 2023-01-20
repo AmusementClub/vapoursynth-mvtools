@@ -35,6 +35,7 @@ enum {
 };
 
 
+struct SimpleResize;
 typedef struct SimpleResize SimpleResize;
 
 
@@ -48,7 +49,7 @@ typedef void (*ResizeFunction16)(const SimpleResize *simple,
                                  int horizontal_vectors);
 
 
-typedef struct SimpleResize {
+struct SimpleResize {
     int dst_width;
     int dst_height;
     int src_width;
@@ -69,7 +70,7 @@ typedef struct SimpleResize {
 
     ResizeFunction8 simpleResize_uint8_t;
     ResizeFunction16 simpleResize_int16_t;
-} SimpleResize;
+};
 
 
 void simpleInit(SimpleResize *simple, int dst_width, int dst_height, int src_width, int src_height, int limit_width, int limit_height, int pel, int opt);

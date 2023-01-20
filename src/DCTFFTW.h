@@ -34,7 +34,7 @@ typedef struct DCTFFTW DCTFFTW;
 typedef void (*Float2PixelsFunction)(const DCTFFTW *dct, uint8_t *dstp, int dst_pitch, float *realdata);
 
 
-typedef struct DCTFFTW {
+struct DCTFFTW {
     int sizex;
     int sizey;
     int bitsPerSample;
@@ -47,7 +47,7 @@ typedef struct DCTFFTW {
     int dctshift0;
 
     Float2PixelsFunction Float2Pixels;
-} DCTFFTW;
+};
 
 
 void dctInit(DCTFFTW *dct, int sizex, int sizey, int bitsPerSample, int opt);
