@@ -143,19 +143,8 @@ FFTW3 configured for 32 bit floats is required ("fftw3f").
 
 ::
 
-   mkdir build; cd build
-   meson ../
-   ninja
-
-Or
-
-::
-
-   ./autogen.sh
-   ./configure
-   make
-
-Meson runs faster than autogen.sh and configure.
+   meson setup build
+   ninja -C build
 
 
 License
